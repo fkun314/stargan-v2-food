@@ -29,7 +29,7 @@ bash download.sh wing
 python debug_image.py
 ```
 
-いろんな記録は[Notion](https://www.notion.so/FoodAR-1b890c6de87580349b44ec2053181ad1?pvs=4)にあります
+いろんな記録は[Notion](https://misty-sandwich-2d0.notion.site/FoodAR-1b890c6de87580349b44ec2053181ad1)にあります
 
 下記は公式のREADMEをそのまま貼っておきます...
 ---
