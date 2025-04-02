@@ -532,3 +532,6 @@ expr/samples/200000_latent_psi_0.5.jpg
 expr/samples/200000_latent_psi_0.7.jpg
 expr/samples/200000_latent_psi_1.0.jpg
 expr/samples/200000_reference.jpg
+*.mlmodel
+*.bin
+*.json

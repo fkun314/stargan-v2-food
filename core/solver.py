@@ -23,8 +23,7 @@ from core.checkpoint import CheckpointIO
 from core.data_loader import InputFetcher
 import core.utils as utils
 from metrics.eval import calculate_metrics
-from torchvision.utils import save_image as torch_save_image
-# import wandb
+
 
 class Solver(nn.Module):
     def __init__(self, args):
@@ -95,13 +94,9 @@ class Solver(nn.Module):
         # remember the initial value of ds weight
         initial_lambda_ds = args.lambda_ds
 
-        # 学習メトリクスの初期化
-        best_fid = float('inf')
-
         print('Start training...')
         start_time = time.time()
         for i in range(args.resume_iter, args.total_iters):
-            self.step = i + 1
             # fetch images and labels
             inputs = next(fetcher)
             x_real, y_org = inputs.x_src, inputs.y_src
@@ -147,52 +142,21 @@ class Solver(nn.Module):
             if args.lambda_ds > 0:
                 args.lambda_ds -= (initial_lambda_ds / args.ds_iter)
 
-            # メトリクスのログを修正
-            if (i+1) % args.eval_every == 0:
-                # calculate_metricsの結果を使用
-                metrics = calculate_metrics(nets_ema, args, i+1, mode='both')
-                
-                # WandBにメトリクスを記録
-                # wandb.log({
-                #     'metrics/fid_latent': metrics.get('fid_latent', 0),
-                #     'metrics/fid_reference': metrics.get('fid_reference', 0),
-                #     'metrics/lpips_latent': metrics.get('lpips_latent', 0),
-                #     'metrics/lpips_reference': metrics.get('lpips_reference', 0),
-                #     'iteration': i+1
-                # })
-                
-                # ベストモデルの保存
-                if metrics.get('fid_latent', float('inf')) < best_fid:
-                    best_fid = metrics.get('fid_latent')
-                    self._save_checkpoint(i+1)
-
-            # 学習損失のログ
+            # print out log info
             if (i+1) % args.print_every == 0:
                 elapsed = time.time() - start_time
                 elapsed = str(datetime.timedelta(seconds=elapsed))[:-7]
                 log = "Elapsed time [%s], Iteration [%i/%i], " % (elapsed, i+1, args.total_iters)
                 all_losses = dict()
                 for loss, prefix in zip([d_losses_latent, d_losses_ref, g_losses_latent, g_losses_ref],
-                                      ['D/latent_', 'D/ref_', 'G/latent_', 'G/ref_']):
+                                        ['D/latent_', 'D/ref_', 'G/latent_', 'G/ref_']):
                     for key, value in loss.items():
                         all_losses[prefix + key] = value
                 all_losses['G/lambda_ds'] = args.lambda_ds
                 log += ' '.join(['%s: [%.4f]' % (key, value) for key, value in all_losses.items()])
                 print(log)
-                # wandb.log({
-                #     'train/d_loss': d_loss.item(),
-                #     'train/g_loss': g_loss.item(),
-                #     'train/g_adv_loss': g_losses_latent.adv,
-                #     'train/g_sty_loss': g_losses_latent.sty,
-                #     'train/g_cyc_loss': g_losses_latent.cyc,
-                #     'train/g_ds_loss': g_losses_latent.ds if args.lambda_ds > 0 else 0,
-                #     'train/d_real_loss': d_losses_latent.real,
-                #     'train/d_fake_loss': d_losses_latent.fake,
-                #     'train/d_reg_loss': d_losses_latent.reg if args.lambda_reg > 0 else 0,
-                #     'iteration': i+1
-                # })
 
-            # サンプル画像の生成とログ
+            # generate images for debugging
             if (i+1) % args.sample_every == 0:
                 os.makedirs(args.sample_dir, exist_ok=True)
                 utils.debug_image(nets_ema, args, inputs=inputs_val, step=i+1)
@@ -203,68 +167,26 @@ class Solver(nn.Module):
 
             # compute FID and LPIPS if necessary
             if (i+1) % args.eval_every == 0:
-                calculate_metrics(nets_ema, args, i+1, mode='both')
-                # calculate_metrics(nets_ema, args, i+1, mode='latent')
-                # calculate_metrics(nets_ema, args, i+1, mode='reference')
-
-    # @torch.no_grad()
-    # def sample(self, loaders):
-    #     args = self.args
-    #     nets_ema = self.nets_ema
-    #     os.makedirs(args.result_dir, exist_ok=True)
-    #     self._load_checkpoint(args.resume_iter)
-
-    #     src = next(InputFetcher(loaders.src, None, args.latent_dim, 'test'))
-    #     ref = next(InputFetcher(loaders.ref, None, args.latent_dim, 'test'))
-
-    #     # バッチサイズを調整
-    #     batch_size = min(src.x.size(0), ref.x.size(0))
-    #     src_x = src.x[:batch_size]
-    #     ref_x = ref.x[:batch_size]
-    #     ref_y = ref.y[:batch_size]
-
-    #     fname = ospj(args.result_dir, 'reference.jpg')
-    #     print('Working on {}...'.format(fname))
-    #     # utils.translate_using_reference(nets_ema, args, src.x, ref.x, ref.y, fname)
-    #     # generatorを直接呼び出すように変更
-    #     with torch.no_grad():
-    #             s_ref = nets_ema.style_encoder(ref_x, ref_y)
-    #             x_fake = nets_ema.generator(src_x, s_ref)
-    #             from torchvision.utils import save_image as torch_save_image  # 直接インポート
-    #             torch_save_image(x_fake, fname, normalize=True)  # 直接呼び出し
-
-    #     # fname = ospj(args.result_dir, 'video_ref.mp4')
-    #     # print('Working on {}...'.format(fname))
-    #     # utils.video_ref(nets_ema, args, src.x, ref.x, ref.y, fname)
+                calculate_metrics(nets_ema, args, i+1, mode='latent')
+                calculate_metrics(nets_ema, args, i+1, mode='reference')
 
     @torch.no_grad()
     def sample(self, loaders):
         args = self.args
         nets_ema = self.nets_ema
+        os.makedirs(args.result_dir, exist_ok=True)
         self._load_checkpoint(args.resume_iter)
-        
-        # srcから1枚だけ取得
-        src = next(InputFetcher(loaders.src, None, args.latent_dim, 'test'))
-        src_x = src.x[0:1]  # 最初の1枚のみ使用
-        
-        # refから全ドメインのスタイルを取得
-        all_x_fake = []
-        
-        with torch.no_grad():
-            for ref_batch in loaders.ref:  # データローダーをイテレート
-                ref_x = ref_batch[0]  # 画像テンソル
-                ref_y = ref_batch[1]  # ドメインラベル
-                s_ref = nets_ema.style_encoder(ref_x, ref_y)
-                # src_xを各スタイルで変換
-                for s in s_ref:
-                    x_fake = nets_ema.generator(src_x, s.unsqueeze(0))
-                    all_x_fake.append(x_fake)
-        
-        # 全23スタイルの結果を1枚の画像に結合
-        fname = ospj(args.result_dir, 'reference.jpg')
-        all_x_fake = torch.cat(all_x_fake, dim=0)  # バッチ方向に結合
-        torch_save_image(all_x_fake, fname, nrow=5, normalize=True, padding=2)  # 5列でグリッド表示
 
+        src = next(InputFetcher(loaders.src, None, args.latent_dim, 'test'))
+        ref = next(InputFetcher(loaders.ref, None, args.latent_dim, 'test'))
+
+        fname = ospj(args.result_dir, 'reference.jpg')
+        print('Working on {}...'.format(fname))
+        utils.translate_using_reference(nets_ema, args, src.x, ref.x, ref.y, fname)
+
+        fname = ospj(args.result_dir, 'video_ref.mp4')
+        print('Working on {}...'.format(fname))
+        utils.video_ref(nets_ema, args, src.x, ref.x, ref.y, fname)
 
     @torch.no_grad()
     def evaluate(self):
@@ -272,10 +194,8 @@ class Solver(nn.Module):
         nets_ema = self.nets_ema
         resume_iter = args.resume_iter
         self._load_checkpoint(args.resume_iter)
-        # calculate_metrics(nets_ema, args, step=resume_iter, mode='latent')
-        # calculate_metrics(nets_ema, args, step=resume_iter, mode='reference')
-        calculate_metrics(nets_ema, args, step=resume_iter, mode='both')
-
+        calculate_metrics(nets_ema, args, step=resume_iter, mode='latent')
+        calculate_metrics(nets_ema, args, step=resume_iter, mode='reference')
 
 
 def compute_d_loss(nets, args, x_real, y_org, y_trg, z_trg=None, x_ref=None, masks=None):

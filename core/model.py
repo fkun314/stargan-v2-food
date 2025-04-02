@@ -16,7 +16,6 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-# import wandb
 
 from core.wing import FAN
 
@@ -138,6 +137,8 @@ class Generator(nn.Module):
     def __init__(self, img_size=256, style_dim=64, max_conv_dim=512, w_hpf=1):
         super().__init__()
         dim_in = 2**14 // img_size
+        if img_size == 512:
+            dim_in = dim_in // 2  # 512の場合は半分にする
         self.img_size = img_size
         self.from_rgb = nn.Conv2d(3, dim_in, 3, 1, 1)
         self.encode = nn.ModuleList()
@@ -175,32 +176,16 @@ class Generator(nn.Module):
     def forward(self, x, s, masks=None):
         x = self.from_rgb(x)
         cache = {}
-        
-        # 中間層の特徴マップをログ
-        # if wandb.run is not None:
-        #     intermediate_features = []
-        
         for block in self.encode:
             if (masks is not None) and (x.size(2) in [32, 64, 128]):
                 cache[x.size(2)] = x
             x = block(x)
-            # if wandb.run is not None:
-            #     intermediate_features.append(x.detach().cpu())
-        
         for block in self.decode:
             x = block(x, s)
             if (masks is not None) and (x.size(2) in [32, 64, 128]):
                 mask = masks[0] if x.size(2) in [32] else masks[1]
                 mask = F.interpolate(mask, size=x.size(2), mode='bilinear')
                 x = x + self.hpf(mask * cache[x.size(2)])
-        
-        # WandBにログを記録
-        # if wandb.run is not None and not self.training:
-        #     wandb.log({
-        #         "generator/feature_maps": [wandb.Image(feat[0,0]) for feat in intermediate_features],
-        #         "generator/output": wandb.Image(self.to_rgb(x)[0].detach().cpu())
-        #     })
-            
         return self.to_rgb(x)
 
 

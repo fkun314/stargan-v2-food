@@ -418,14 +418,14 @@ def main():
     args.style_dim = 64
     args.latent_dim = 16
     args.num_domains = 23  # ドメインの総数
-    args.w_hpf = 1
+    args.w_hpf = 0
     args.num_outs_per_domain = 1
     args.max_conv_dim = 512
     args.repeat_num_offset = -2
 
     # チェックポイントのパスを設定
     checkpoint_dir = 'expr/checkpoints/foodimg512'
-    checkpoint_path = os.path.join(checkpoint_dir, '100000_nets.ckpt')
+    checkpoint_path = os.path.join(checkpoint_dir, '200000_nets.ckpt')
     wing_path = 'expr/checkpoints/wing.ckpt'
 
     if not os.path.exists(checkpoint_dir):

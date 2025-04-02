@@ -25,12 +25,8 @@ from core import utils
 @torch.no_grad()
 def calculate_metrics(nets, args, step, mode):
     print('Calculating evaluation metrics...')
-    assert mode in ['latent', 'reference', 'both']
+    assert mode in ['latent', 'reference']
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    if mode == 'both':
-        calculate_metrics(nets, args, step, mode='latent')
-        calculate_metrics(nets, args, step, mode='reference')
-        return
 
     domains = os.listdir(args.val_img_dir)
     domains.sort()

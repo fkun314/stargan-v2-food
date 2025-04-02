@@ -10,7 +10,6 @@ Creative Commons, PO Box 1866, Mountain View, CA 94042, USA.
 
 import os
 import torch
-# import wandb
 
 
 class CheckpointIO(object):
@@ -34,12 +33,6 @@ class CheckpointIO(object):
                 outdict[name] = module.state_dict()
                         
         torch.save(outdict, fname)
-        
-        # WandBにモデルを保存
-        # if wandb.run is not None:
-        #     artifact = wandb.Artifact(f'model-{step}', type='model')
-        #     artifact.add_file(fname)
-        #     wandb.log_artifact(artifact)
 
     def load(self, step):
         fname = self.fname_template.format(step)

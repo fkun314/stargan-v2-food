@@ -29,6 +29,11 @@ bash download.sh wing
 python debug_image.py
 ```
 
+checkpointをmlpackageに変換する例
+```
+(stargan) (base) mochi@mochi-Air stargan-v2-master % /opt/anaconda3/envs/stargan/bin/python /Users/mochi/Downloads/stargan-v2-master/convert_stargan_coreml.py --checkpoint_dir ./expr/checkpoints/foodimg512 --resume_iter 200000 --img_size 256 --style_dim 64 --result_dir ./results_coreml/foodimg512 --src_dir ./data/foodimg512/val --ref_dir ./data/foodimg512/val
+```
+
 いろんな記録は[Notion](https://misty-sandwich-2d0.notion.site/FoodAR-1b890c6de87580349b44ec2053181ad1)にあります
 
 下記は公式のREADMEをそのまま貼っておきます...

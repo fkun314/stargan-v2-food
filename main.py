@@ -10,7 +10,6 @@ Creative Commons, PO Box 1866, Mountain View, CA 94042, USA.
 
 import os
 import argparse
-# import wandb
 
 from munch import Munch
 from torch.backends import cudnn
@@ -35,51 +34,31 @@ def main(args):
     cudnn.benchmark = True
     torch.manual_seed(args.seed)
 
-    # まずsolverを作成
     solver = Solver(args)
-
-    # その後でWandBの初期化
-    # if args.mode == 'train':
-    #     wandb.init(
-    #         project=args.wandb_project,
-    #         entity=args.wandb_entity,
-    #         name=args.wandb_name or f"run_{args.resume_iter}",
-    #         config={
-    #             **vars(args),
-    #             'dataset_name': os.path.basename(args.train_img_dir),
-    #             'num_params': sum(p.numel() for p in solver.nets.generator.parameters()),
-    #         },
-    #         tags=[
-    #             os.path.basename(args.train_img_dir),  # データセット名
-    #             f"img_size_{args.img_size}",
-    #             f"batch_{args.batch_size}",
-    #             f"style_dim_{args.style_dim}"
-    #         ]
-    #     )
 
     if args.mode == 'train':
         assert len(subdirs(args.train_img_dir)) == args.num_domains
         assert len(subdirs(args.val_img_dir)) == args.num_domains
         loaders = Munch(src=get_train_loader(root=args.train_img_dir,
-                                           which='source',
-                                           img_size=args.img_size,
-                                           batch_size=args.batch_size,
-                                           prob=args.randcrop_prob,
-                                           num_workers=args.num_workers),
-                       ref=get_train_loader(root=args.train_img_dir,
-                                           which='reference',
-                                           img_size=args.img_size,
-                                           batch_size=args.batch_size,
-                                           prob=args.randcrop_prob,
-                                           num_workers=args.num_workers),
-                       val=get_test_loader(root=args.val_img_dir,
-                                          img_size=args.img_size,
-                                          batch_size=args.val_batch_size,
-                                          shuffle=True,
-                                          num_workers=args.num_workers))
+                                             which='source',
+                                             img_size=args.img_size,
+                                             batch_size=args.batch_size,
+                                             prob=args.randcrop_prob,
+                                             num_workers=args.num_workers),
+                        ref=get_train_loader(root=args.train_img_dir,
+                                             which='reference',
+                                             img_size=args.img_size,
+                                             batch_size=args.batch_size,
+                                             prob=args.randcrop_prob,
+                                             num_workers=args.num_workers),
+                        val=get_test_loader(root=args.val_img_dir,
+                                            img_size=args.img_size,
+                                            batch_size=args.val_batch_size,
+                                            shuffle=True,
+                                            num_workers=args.num_workers))
         solver.train(loaders)
     elif args.mode == 'sample':
-        # assert len(subdirs(args.src_dir)) == args.num_domains
+        assert len(subdirs(args.src_dir)) == args.num_domains
         assert len(subdirs(args.ref_dir)) == args.num_domains
         loaders = Munch(src=get_test_loader(root=args.src_dir,
                                             img_size=args.img_size,
@@ -197,15 +176,7 @@ if __name__ == '__main__':
     parser.add_argument('--print_every', type=int, default=10)
     parser.add_argument('--sample_every', type=int, default=5000)
     parser.add_argument('--save_every', type=int, default=10000)
-    parser.add_argument('--eval_every', type=int, default=120000)
-
-    # WandB arguments
-    # parser.add_argument('--wandb_project', type=str, default='stargan-v2',
-    #                     help='WandB project name')
-    # parser.add_argument('--wandb_entity', type=str, default=None,
-    #                     help='WandB entity name')
-    # parser.add_argument('--wandb_name', type=str, default=None,
-    #                     help='WandB run name')
+    parser.add_argument('--eval_every', type=int, default=50000)
 
     args = parser.parse_args()
     main(args)
