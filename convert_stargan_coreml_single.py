@@ -1972,6 +1972,24 @@ def run_coreml_inference_test(args: Config, coreml_model_path: str):
         import traceback
         traceback.print_exc()
 
+@torch.no_grad()
+def translate_single_image(nets, args, x_src, x_ref, y_ref, filename):
+    """単一の入力画像と参照画像から1枚の変換画像を生成する"""
+    # 入力画像のサイズを取得
+    _, C, H, W = x_src.size()
+    
+    # マスクの生成（必要な場合）
+    masks = nets.fan.get_heatmap(x_src) if args.w_hpf > 0 else None
+    
+    # リファレンス画像からスタイルを抽出
+    s_ref = nets.style_encoder(x_ref, y_ref)
+    
+    # 生成器を使用して画像を変換
+    x_fake = nets.generator(x_src, s_ref, masks=masks)
+    
+    # 変換された画像を保存
+    save_image(x_fake, 1, filename)
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Convert StarGAN v2 PyTorch model to Core ML")
 
