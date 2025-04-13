@@ -1296,6 +1296,11 @@ def build_model(args):
     mapping_network_ema = copy.deepcopy(mapping_network)
     style_encoder_ema = copy.deepcopy(style_encoder)
 
+    print(f"generator: {generator}")
+    print(f"mapping_network: {mapping_network}")
+    print(f"style_encoder: {style_encoder}")
+    print(f"discriminator: {discriminator}")
+
     nets = Munch(generator=generator,
                  mapping_network=mapping_network,
                  style_encoder=style_encoder,
